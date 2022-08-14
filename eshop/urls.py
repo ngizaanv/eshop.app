@@ -1,8 +1,11 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework import routers
+from .views import ProductsViewSet, CommentsViewSet, CartsViewSet, CartProductsViewSet
 
-from eshop import views
+router = routers.SimpleRouter()
+router.register(r'products', ProductsViewSet)
+router.register(r'comments', CommentsViewSet)
+router.register(r'carts', CartsViewSet)
+router.register(r'cartproducts', CartProductsViewSet)
+urlpatterns = router.urls
 
-urlpatterns = [
-    path('products/', views.ProductList.as_view(), name='get_post_product'),
-    path('products/<int:pk>/', views.ProductDetail.as_view(), name='get_delete_product'),
-]

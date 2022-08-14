@@ -67,17 +67,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         return self.email
 
-    # @property
-    # def is_staff(self):
-    #     "Is the user a member of staff?"
-    #     # Simplest possible answer: All admins are staff
-    #     return self.is_admin
-    #
-    # def has_perm(self, perm, obj=None):
-    #     return self.is_admin
-    #
-    # def has_module_perms(self, app_label):
-    #     return True
 
 class Product(models.Model):
     title = models.CharField(max_length=150)
@@ -85,7 +74,7 @@ class Product(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     pictures = models.ImageField(upload_to='images/', blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    discount = models.ForeignKey(Discount, on_delete=models.CASCADE)
+    discount = models.ForeignKey(Discount, null=True, on_delete=models.CASCADE)
     supplier = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     category = models.ForeignKey(Category, related_name='product', blank=True, on_delete=models.CASCADE)
 
@@ -99,30 +88,34 @@ class Product(models.Model):
 
 class Cart(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
-    product = models.ManyToManyField(Product, blank=True)
-    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     in_order = models.BooleanField(default=False)
 
-    def total(self):
+    @property
+    def total_price(self):
+        """
+        Count total price of products in cart
+        """
         cart_products = CartProduct.objects.filter(cart=self.pk)
         total_price = 0
         for cart_product in cart_products:
-            total_price += cart_product.product.price
+            total_price += cart_product.price
         return total_price
 
     def __str__(self):
-        return str(self.total_price)
-
+        return self.user.email
 
 class CartProduct(models.Model):
     quantity = models.PositiveIntegerField(blank=True, default=1)
     cart = models.ForeignKey('Cart', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
-
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     def save(self, *args, **kwargs):
-        if self.product.discount > 0:
-            self.price = (self.product.price - self.product.price * self.product.discount / 100) * self.quantity
+        """
+        Saves a price of products with discount and count subtotal.
+        """
+        if self.product.discount.discount > 0:
+            self.price = (self.product.price - self.product.price * self.product.discount.discount / 100) * self.quantity
         else:
             self.price = self.product.price * self.quantity
         super(CartProduct, self).save(*args, **kwargs)
@@ -137,12 +130,14 @@ class Comment(models.Model):
         (4, '4'),
         (5, '5')
     ]
+
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     rate = models.IntegerField(choices=RATING_RANGE,)
     content = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
     replies = models.ForeignKey("Comment", related_name='comment', blank=True, null=True, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, related_name='comment', blank=True, null=True, on_delete=models.CASCADE)
+
     def __str__(self):
         return self.content
 
