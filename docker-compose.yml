@@ -24,3 +24,5 @@ services:
       - db
     env_file:
       - .env
+    links:
+      - db:db
